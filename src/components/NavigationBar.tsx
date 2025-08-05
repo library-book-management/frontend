@@ -1,4 +1,3 @@
-import React from 'react';
 import { MdSpaceDashboard } from 'react-icons/md';
 import { FaUserFriends } from 'react-icons/fa';
 import { FaBook } from 'react-icons/fa6';
