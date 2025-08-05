@@ -20,4 +20,11 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+axiosClient.interceptors.response.use(
+  (value) => value.data,
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export default axiosClient;
