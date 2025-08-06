@@ -1,9 +1,9 @@
+import type { CreateAuthorDto, IAuthor } from "../types/authors.type";
 import { useEffect, useState } from "react";
 import { Modal, Button, Table } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { authorsApi } from "../apis/author.api";
-import type { CreateAuthorDto, IAuthor } from "../types/authors.type";
 
 const Authors = () => {
   const [authorList, setAuthorList] = useState<IAuthor[]>([]);
