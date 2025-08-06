@@ -1,12 +1,14 @@
 import type { CreateAuthorDto, IAuthor } from "../types/authors.type";
 import { useEffect, useState } from "react";
-import { Modal, Button, Table } from "react-bootstrap";
+import { Modal, Button, Table, Pagination } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { authorsApi } from "../apis/author.api";
 
 const Authors = () => {
   const [authorList, setAuthorList] = useState<IAuthor[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -14,18 +16,22 @@ const Authors = () => {
 
   const { register, handleSubmit, reset } = useForm<Partial<IAuthor>>();
 
-  const loadAuthors = async () => {
+  const limit = 10;
+  const totalPages = Math.ceil(total / limit);
+
+  const loadAuthors = async (pageNum = page) => {
     try {
-      const res = await authorsApi.getAll();
+      const res = await authorsApi.getAll({page: pageNum, limit});
       setAuthorList(res?.data?.authors || []);
+      setTotal(res?.data?.totalResults || 0);
     } catch {
       toast.error("Lỗi không thể lấy danh sách tác giả");
     }
   };
 
   useEffect(() => {
-    loadAuthors();
-  }, []);
+    loadAuthors(page);
+  }, [page]);
 
   const openCreate = () => {
     reset({ name: "", phone: "", email: "" });
@@ -53,7 +59,7 @@ const Authors = () => {
     try {
       await authorsApi.delete(deletingAuthor._id);
       toast.success("Xoá thành công");
-      loadAuthors();
+      loadAuthors(page);
     } catch {
       toast.error("Không thể xoá");
     } finally {
@@ -73,7 +79,7 @@ const Authors = () => {
         toast.success("Tạo mới thành công");
       }
       setShowModal(false);
-      loadAuthors();
+      loadAuthors(page);
     } catch {
       toast.error("Lỗi khi lưu tác giả");
     }
@@ -124,6 +130,25 @@ const Authors = () => {
           ))}
         </tbody>
       </Table>
+
+      {/* Pagination từ react-bootstrap */}
+      <Pagination className="justify-content-center mt-3">
+        <Pagination.First onClick={() => setPage(1)} disabled={page === 1} />
+        <Pagination.Prev onClick={() => setPage((p) => p - 1)} disabled={page === 1} />
+
+        {Array.from({ length: totalPages }, (_, i) => (
+          <Pagination.Item
+            key={i + 1}
+            active={i + 1 === page}
+            onClick={() => setPage(i + 1)}
+          >
+            {i + 1}
+          </Pagination.Item>
+        ))}
+
+        <Pagination.Next onClick={() => setPage((p) => p + 1)} disabled={page === totalPages} />
+        <Pagination.Last onClick={() => setPage(totalPages)} disabled={page === totalPages} />
+      </Pagination>
 
       {/* Modal tạo/sửa */}
       <Modal show={showModal} centered onHide={() => setShowModal(false)}>
