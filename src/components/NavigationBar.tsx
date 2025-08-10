@@ -5,6 +5,8 @@ import { PiBooksFill } from 'react-icons/pi';
 import { FaRegListAlt } from 'react-icons/fa';
 import { PiOfficeChairFill } from 'react-icons/pi';
 import { Link } from 'react-router-dom';
+import { useAuthStore } from '../stores/auth.store';
+import { toast } from 'react-toastify';
 
 const navLinks = [
   {
@@ -40,6 +42,11 @@ const navLinks = [
 ];
 
 const NavigationBar = ({ className }: { className: string }) => {
+  const { logout } = useAuthStore();
+  const handleLogout = () => {
+    logout();
+    toast.success('Đăng xuất thành công');
+  };
   return (
     <div className={className}>
       <div className="text-2xl font-bold text-center my-12">Logo here</div>
@@ -69,7 +76,10 @@ const NavigationBar = ({ className }: { className: string }) => {
           </Link>
         ))}
       </nav>
-      <button className="absolute bottom-0 bg-black text-white w-full py-2">
+      <button
+        className="absolute bottom-0 bg-black text-white w-full py-2"
+        onClick={handleLogout}
+      >
         Logout
       </button>
     </div>
