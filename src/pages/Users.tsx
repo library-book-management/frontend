@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import HeaderPage from '../components/HeaderPage';
 import Box from '@mui/material/Box';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef } from '@mui/x-data-grid';
+import type { GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
 import type { User } from '../types/user.type';
 import { useUserStore } from '../stores/user.store';
 import { IconButton, Stack } from '@mui/material';
@@ -10,6 +10,7 @@ import { BiEdit } from 'react-icons/bi';
 import { MdDelete } from 'react-icons/md';
 import UserUpsertModal from '../components/UserUpsertModal';
 import { USER_MODAL_TYPE } from '../constant/userType';
+import type { UserModalType } from '../constant/userType';
 
 const Users = () => {
   const { getUserByConditions, users } = useUserStore();
@@ -17,7 +18,7 @@ const Users = () => {
   const [userIdSelection, setUserIdSelection] = useState<string[]>([]);
   const [keyword, setKeyword] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(USER_MODAL_TYPE.CREATE);
+  const [modalType, setModalType] = useState<UserModalType>();
 
   // Hàm load user có params
   const loadUsers = async (search = '') => {
@@ -41,7 +42,10 @@ const Users = () => {
 
   // Khi users trong store thay đổi thì set lại state local
   useEffect(() => {
-    setUserData(users || []);
+    if (users && users.length > 0) {
+      setUserData(users);
+    }
+    console.log(users);
   }, [users]);
 
   // Khi keyword thay đổi thì gọi API mới (debounce để giảm call)
@@ -102,7 +106,7 @@ const Users = () => {
             // onClick={() => handleEdit(params.row)}
             onClick={() => {
               setShowModal(true);
-              setUserIdSelection([params.row._id]);
+              setUserIdSelection([params.row._id ?? '']);
               setModalType(USER_MODAL_TYPE.UPDATE);
             }}
           >
@@ -131,7 +135,7 @@ const Users = () => {
           ></div>
           <UserUpsertModal
             userId={userIdSelection}
-            type={modalType}
+            type={modalType ?? ''}
             onCloseModal={() => setShowModal(false)}
             loadUsers={loadUsers}
           />
@@ -147,14 +151,17 @@ const Users = () => {
           <DataGrid
             rows={userData}
             columns={columns}
-            getRowId={(row) => row._id}
+            getRowId={(row) => row._id ?? ''}
             initialState={{
               pagination: { paginationModel: { pageSize: 5 } },
             }}
             pageSizeOptions={[5]}
             checkboxSelection
             disableRowSelectionOnClick
-            onRowSelectionModelChange={(ids) => setUserIdSelection(ids)}
+            onRowSelectionModelChange={(ids) => {
+              const rowIds = ids as unknown as string[];
+              setUserIdSelection(rowIds.map((id) => id));
+            }}
           />
         </Box>
       ) : (
