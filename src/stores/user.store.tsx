@@ -7,6 +7,7 @@ interface userState {
   user: User | null;
   users: [User] | null;
   message: string | null;
+  setUser: (user: User | null) => void;
   setUsers: (users: [User] | null) => void;
   getUserByConditions: (params: Params) => Promise<void>;
   getUserById: (userId: string) => Promise<void>;
@@ -24,8 +25,9 @@ export const useUserStore = create<userState>((set) => ({
   getUserByConditions: async (params: Params) => {
     try {
       const response = await userApi.getUsersByConditions(params);
+      console.log('XXX' + response);
 
-      set({ users: response.data.users, message: response.message });
+      set({ users: response.data.users, message: response.data.message });
     } catch (error: any) {
       throw error.response?.data || error;
     }
@@ -34,7 +36,7 @@ export const useUserStore = create<userState>((set) => ({
   getUserById: async (userId: string) => {
     try {
       const response = await userApi.getUserById(userId);
-      set({ user: response.data.user, message: response.message });
+      set({ user: response.data.user, message: response.data.message });
     } catch (error: any) {
       throw error.response?.data || error;
     }
@@ -44,7 +46,7 @@ export const useUserStore = create<userState>((set) => ({
     try {
       const response = await userApi.updateUserById(userId, data);
 
-      set({ user: response.data.user, message: response.message });
+      set({ user: response.data.user, message: response.data.message });
     } catch (error: any) {
       throw error.response?.data || error;
     }
@@ -55,7 +57,7 @@ export const useUserStore = create<userState>((set) => ({
       const response = await userApi.createUser(data);
       console.log(response);
 
-      set({ user: response.data.user, message: response.message });
+      set({ user: response.data.user, message: response.data.message });
     } catch (error: any) {
       throw error.response?.data || error;
     }

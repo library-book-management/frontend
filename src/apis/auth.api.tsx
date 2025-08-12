@@ -15,6 +15,7 @@ export interface LoginResponse {
     role: string;
     address?: string;
   };
+  message: string;
 }
 
 const authAPI = {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { USER_MODAL_TYPE } from '../constant/userType';
 import { useUserStore } from '../stores/user.store';
 import type { User } from '../types/user.type';
@@ -15,16 +15,21 @@ const UserUpsertModal = ({
   onCloseModal,
   loadUsers,
 }: {
-  userId: string;
+  userId: string[];
   type: string;
   onCloseModal: () => void;
   loadUsers: () => void;
 }) => {
   const { getUserById, user, updateUserById, createUser } = useUserStore();
-  const [userCredentials, setUserCredentials] = useState<User | null>(null);
+  const [userCredentials, setUserCredentials] = useState<User>({
+    name: '',
+    email: '',
+    role: USER_ROLE.USER,
+    address: '',
+  });
 
   useEffect(() => {
-    getUserById(userId);
+    getUserById(userId[0]);
   }, [userId]);
 
   useEffect(() => {
@@ -42,14 +47,16 @@ const UserUpsertModal = ({
         address: '',
       });
     }
-  }, []);
+  }, [type]);
 
   const handleUpdate = async () => {
     try {
-      await updateUserById(userId, userCredentials);
-      loadUsers();
-      onCloseModal();
-      toast.success('Cập nhật thẻ thành công');
+      if (userCredentials) {
+        await updateUserById(userId[0], userCredentials);
+        loadUsers();
+        onCloseModal();
+        toast.success('Cập nhật thẻ thành công');
+      }
     } catch (error) {
       toast.error('Lỗi khi cập nhật thẻ');
     }
