@@ -1,5 +1,3 @@
-import React from 'react';
-import { OBJECT_TYPE } from '../constant/userType';
 import type { ObjectType } from '../constant/userType';
 import { FcCancel } from 'react-icons/fc';
 

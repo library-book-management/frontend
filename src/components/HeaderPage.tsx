@@ -1,5 +1,4 @@
-import React from 'react';
-import { BiSearch, BiExport, BiPlus } from 'react-icons/bi';
+import { BiSearch, BiPlus } from 'react-icons/bi';
 
 type HeaderProps = {
   title: string;

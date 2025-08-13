@@ -47,15 +47,15 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       set({
         users: response.data.users,
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-        message: response.message,
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken,
+        message: response.data.message,
       });
 
       // Lưu vào localStorage
       localStorage.setItem('users', JSON.stringify(response.data.users));
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      localStorage.setItem('accessToken', response.data.accessToken);
+      localStorage.setItem('refreshToken', response.data.refreshToken);
     } catch (error: any) {
       throw error.response?.data || error;
     }
