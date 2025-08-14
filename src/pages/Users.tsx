@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import HeaderPage from '../components/HeaderPage';
 import Box from '@mui/material/Box';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
+import type { GridColDef } from '@mui/x-data-grid';
 import type { User } from '../types/user.type';
 import { useUserStore } from '../stores/user.store';
 import { IconButton, Stack } from '@mui/material';
@@ -25,9 +25,9 @@ const Users = () => {
     await getUserByConditions({ page: 1, limit: 10, keyword: search });
   };
 
-  const handleSearch = () => {
-    loadUsers(keyword);
-  };
+  // const handleSearch = () => {
+  //   loadUsers(keyword);
+  // };
 
   const onClickAdd = () => {
     setShowModal(true);

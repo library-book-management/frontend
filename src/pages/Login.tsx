@@ -3,11 +3,9 @@ import { useAuthStore } from '../stores/auth.store';
 import { BsEyeFill, BsEyeSlashFill } from 'react-icons/bs';
 import { MdEmail } from 'react-icons/md';
 import { toast } from 'react-toastify';
-import type { User } from '../types/user.type';
 
 const Login = () => {
-  const { login, users, accessToken, message } = useAuthStore();
-  const [user, setUser] = React.useState<User | null>(null);
+  const { login, message } = useAuthStore();
   const [showPassword, setShowPassword] = React.useState(false);
   const userCredentials = {
     email: '',
