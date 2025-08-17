@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useAuthorStore } from '../stores/author.store';
 import { AUTHOR_MODAL_TYPE, type AuthorModalType, type IAuthor } from '../types/authors.type';
 import { toast } from 'react-toastify';
-import { useAuthorStore } from '../stores/author.store';
 
 const AuthorUpsertModal = ({
   authorId,
