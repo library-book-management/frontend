@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { IAuthor } from '../types/authors.type';
 import { authorsApi, type AuthorParams } from '../apis/author.api';
-import { toast } from 'react-toastify';
 
 interface AuthorState {
   author: IAuthor | null;
@@ -31,7 +30,6 @@ export const useAuthorStore = create<AuthorState>((set) => ({
       const response = await authorsApi.getAll(params);
       set({ authors: response.data.authors, message: response.data.message });
     } catch (error: any) {
-      toast.error(error.response?.data?.message);
       throw error.response?.data?.message || error;
     }
   },
@@ -41,7 +39,6 @@ export const useAuthorStore = create<AuthorState>((set) => ({
       const response = await authorsApi.getById(authorId);
       set({ author: response.data.author, message: response.data.message });
     } catch (error: any) {
-      toast.error(error.response?.data?.message);
       throw error.response?.data?.message || error;
     }
   },
@@ -51,7 +48,6 @@ export const useAuthorStore = create<AuthorState>((set) => ({
       const response = await authorsApi.update(authorId, data);
       set({ author: response.data.author, message: response.data.message });
     } catch (error: any) {
-      toast.error(error.response?.data?.message);
       throw error.response?.data?.message || error;
     }
   },
@@ -61,7 +57,6 @@ export const useAuthorStore = create<AuthorState>((set) => ({
       const response = await authorsApi.create(data);
       set({ author: response.data.author, message: response.data.message });
     } catch (error: any) {
-      toast.error(error.response?.data?.message);
       throw error.response?.data?.message || error;
     }
   },
@@ -71,7 +66,6 @@ export const useAuthorStore = create<AuthorState>((set) => ({
       const response = await authorsApi.delete(authorId);
       set({ author: response.data.author, message: response.data.message });
     } catch (error: any) {
-      toast.error(error.response?.data?.message);
       throw error.response?.data?.message || error;
     }
   },
