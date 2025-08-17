@@ -1,10 +1,12 @@
 export interface ICategory {
-    _id: string;
+    _id?: string;
     name: string;
 }
-export interface BulkFormValues {
-  categories: Partial<ICategory>[];
-}
 
-export type CreateCategoryDto = Omit<ICategory, "_id">;
-export type UpdateCategoryDto = Partial<Omit<ICategory, "_id">>;
+export const CATEGORY_MODAL_TYPE = {
+  CREATE: 'create',
+  UPDATE: 'update',
+} as const;
+
+export type CategoryModalType =
+  (typeof CATEGORY_MODAL_TYPE)[keyof typeof CATEGORY_MODAL_TYPE];

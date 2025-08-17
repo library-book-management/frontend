@@ -1,312 +1,222 @@
-import type { CreateCategoryDto, ICategory, BulkFormValues } from '../types/categories.type';
+import HeaderPage from '../components/HeaderPage';
+import CategoryUpsertModal from '../components/CategoryUpsertModal';
+import Box from '@mui/material/Box';
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Button, Table, Pagination } from 'react-bootstrap';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import {
+  IconButton,
+  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+} from '@mui/material';
+import { BiEdit } from 'react-icons/bi';
+import { MdDelete } from 'react-icons/md';
+import {
+  CATEGORY_MODAL_TYPE,
+  type CategoryModalType,
+  type ICategory,
+} from '../types/categories.type';
+import { useCategoryStore } from '../stores/category.store';
+import type { CategoryParams } from '../apis/category.api';
 import { toast } from 'react-toastify';
-import { BsPencilSquare, BsTrash } from 'react-icons/bs';
-import { categoriesApi } from '../apis/category.api';
 
 const Categories = () => {
-  const [categoryList, setCategoryList] = useState<ICategory[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const { getCategoriesByConditions, categories, deleteCategoryById } = useCategoryStore();
+
+  const [categoryData, setCategoryData] = useState<ICategory[]>([]);
+  const [categoryIdSelection, setCategoryIdSelection] = useState<string[]>([]);
+  const [keyword, setKeyword] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingCategory, setDeletingCategory] = useState<ICategory | null>(
-    null
-  );
+  const [modalType, setModalType] = useState<CategoryModalType>();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteCategory, setDeleteCategory] = useState<ICategory | null>(null);
 
-  const { register, handleSubmit, reset } = useForm<Partial<ICategory>>();
+  // Hàm load Categories có params
+  const loadCategories = useCallback(async (search = '') => {
+    let paramsApi: CategoryParams = {
+      page: 1,
+      limit: 10,
+    };
 
-  const bulkForm = useForm<BulkFormValues>({
-    defaultValues: { categories: [{ name: '' }] },
-  });
-  const { fields, append, remove } = useFieldArray({
-    control: bulkForm.control,
-    name: 'categories',
-  });
+    if (search.trim() !== '') {
+        // mặc định là tên
+        paramsApi.searchBy = 'name';
+        paramsApi.value = search;
+    }
 
-  const limit = 10;
-  const totalPages = Math.ceil(total / limit);
+    await getCategoriesByConditions(paramsApi);
+  },  [getCategoriesByConditions] );
 
-  const loadCategories = useCallback(
-    async (pageNum = page) => {
-      try {
-        const res = await categoriesApi.getAll({ page: pageNum, limit });
-        setCategoryList(res?.data?.categories || []);
-        setTotal(res?.data?.totalResults || 0);
-      } catch {
-        toast.error('Lỗi không thể lấy danh sách thể loại');
-      }
-    },
-    [page, limit]
-  );
 
-  useEffect(() => {
-    loadCategories(page);
-  }, [loadCategories, page]);
-
-  const openCreate = () => {
-    reset({ name: '' });
-    setEditingId(null);
+  function onClickAdd() {
     setShowModal(true);
+    setModalType(CATEGORY_MODAL_TYPE.CREATE);
+    setCategoryIdSelection([]);
+  }
+
+  const handleDelete = (Category: ICategory) => {
+    setDeleteCategory(Category);
+    setShowDeleteDialog(true);
   };
 
-  const openCreateBulk = () => {
-    bulkForm.reset({ categories: [{ name: '' }] });
-    setShowBulkModal(true);
-  };
-
-  const openEdit = (category: ICategory) => {
-    reset({
-      name: category.name,
-    });
-    setEditingId(category._id);
-    setShowModal(true);
-  };
-
-  const openDelete = (category: ICategory) => {
-    setDeletingCategory(category);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deletingCategory) return;
+ const confirmDelete = async () => {
+  if (deleteCategory) {
     try {
-      await categoriesApi.delete(deletingCategory._id);
-      toast.success('Xoá thành công');
-      loadCategories(page);
+      await deleteCategoryById(deleteCategory._id ?? "");
+      await loadCategories(keyword);
+      toast.success('Xoá thể loại thành công');     // ✅ Thông báo
     } catch {
-      toast.error('Không thể xoá');
+      toast.error('Không thể xoá thể loại');
     } finally {
-      setShowDeleteModal(false);
-      setDeletingCategory(null);
+      setDeleteCategory(null);
+      setShowDeleteDialog(false);                   // đóng dialog
     }
-  };
+  }
+};
 
-  const onSubmit = async (data: Partial<ICategory>) => {
-    try {
-      if (!data) return;
-      if (editingId) {
-        await categoriesApi.update(editingId, data);
-        toast.success('Cập nhật thành công');
-      } else {
-        await categoriesApi.create(data as CreateCategoryDto);
-        toast.success('Tạo mới thành công');
-      }
-      setShowModal(false);
-      loadCategories(page);
-    } catch {
-      toast.error('Lỗi khi lưu thể loại');
-    }
-  };
 
-  const onSubmitBulk = async (data: BulkFormValues) => {
-    try {
-      const validData = data.categories.filter(
-        (c) => c.name && c.name.trim() !== ''
-      );
-      if (validData.length === 0) {
-        toast.error('Vui lòng nhập ít nhất 1 thể loại');
-        return;
-      }
-      await categoriesApi.createBulk(validData as CreateCategoryDto[]);
-      toast.success(`Tạo mới ${validData.length} thể loại thành công`);
-      setShowBulkModal(false);
-      loadCategories(page);
-    } catch {
-      toast.error('Lỗi khi tạo nhiều thể loại');
+  // Lần đầu load
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  // Khi Categories trong store thay đổi thì set lại state local
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      setCategoryData(categories);
     }
-  };
+  }, [categories]);
+
+  // Khi keyword thay đổi thì gọi API mới (debounce để giảm call)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadCategories(keyword);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [keyword, loadCategories]);
+
+  const columns: GridColDef<ICategory>[] = [
+    {
+      field: 'name',
+      headerName: 'Thể loại',
+      flex: 1,
+      align: 'left',
+      editable: true,
+    },
+    {
+      field: 'actions',
+      headerName: 'Hành động',
+      sortable: false,
+      flex: 1,
+      align: 'left',
+      renderCell: (params) => (
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent="left"
+          alignItems="center"
+          className="h-full"
+        >
+          <IconButton
+            color="primary"
+            size="small"
+            onClick={() => {
+              setShowModal(true);
+              setCategoryIdSelection([params.row._id ?? '']);
+              setModalType(CATEGORY_MODAL_TYPE.UPDATE);
+            }}
+          >
+            <BiEdit fontSize="inherit" />
+          </IconButton>
+          <IconButton
+            color="error"
+            size="small"
+            className="flex items-center justify-center"
+            onClick={() => handleDelete(params.row)}
+          >
+            <MdDelete fontSize="inherit" />
+          </IconButton>
+        </Stack>
+      ),
+    },
+  ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center">
-        <h1 className="mb-3 text-2xl font-bold">Danh sách thể loại</h1>
-        <div>
-          <Button onClick={openCreate} variant="primary" className="mb-3">
-            Thêm thể loại
-          </Button>
-          <Button
-            onClick={openCreateBulk}
-            variant="primary"
-            className="mb-3 ms-2"
-          >
-            Thêm nhiều thể loại
-          </Button>
+    <div className="relative">
+      {showModal && (
+        <div className="absolute w-full h-[92vh] flex items-center justify-center">
+          <div
+            className="w-full h-screen fixed top-0 left-0 bg-black opacity-50 flex justify-center items-center z-10"
+            onClick={() => setShowModal(false)}
+          ></div>
+          <CategoryUpsertModal
+            CategoryId={categoryIdSelection}
+            type={modalType ?? ''}
+            onCloseModal={() => setShowModal(false)}
+            loadCategories={loadCategories}
+          />
         </div>
-      </div>
-      <p className="text-muted">
-        Tổng số thể loại: <strong>{total}</strong>
-      </p>
+      )}
 
-      <Table bordered hover>
-        <thead>
-          <tr>
-            <th>STT</th>
-            <th>Tên</th>
-            <th>Số lượng sách</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          {categoryList.map((category, index) => (
-            <tr key={category._id}>
-              <td>{(page - 1) * limit + index + 1}</td>
-              <td>{category.name}</td>
-              <td>
-                {/* Tạm để trống, sau này thay dữ liệu vào 
-              /// TODO: Thêm API lấy số lượng sách theo thể loại */}
-              </td>
-              <td>
-                <Button
-                  variant="warning"
-                  size="sm"
-                  onClick={() => openEdit(category)}
-                  className="me-2"
-                  title="Sửa"
-                >
-                  <BsPencilSquare className="text-white" />
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => openDelete(category)}
-                  title="Xoá"
-                >
-                  <BsTrash />
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-
-      {/* Pagination từ react-bootstrap */}
-      <Pagination className="justify-content-center mt-3">
-        <Pagination.First onClick={() => setPage(1)} disabled={page === 1} />
-        <Pagination.Prev
-          onClick={() => setPage((p) => p - 1)}
-          disabled={page === 1}
-        />
-
-        {Array.from({ length: totalPages }, (_, i) => (
-          <Pagination.Item
-            key={i + 1}
-            active={i + 1 === page}
-            onClick={() => setPage(i + 1)}
-          >
-            {i + 1}
-          </Pagination.Item>
-        ))}
-
-        <Pagination.Next
-          onClick={() => setPage((p) => p + 1)}
-          disabled={page === totalPages}
-        />
-        <Pagination.Last
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages}
-        />
-      </Pagination>
-
-      {/* Modal tạo/sửa */}
-      <Modal show={showModal} centered onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {editingId ? 'Sửa thể loại' : 'Tạo mới thể loại'}
-          </Modal.Title>
-        </Modal.Header>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Modal.Body>
-            <div className="mb-3">
-              <label className="form-label">Tên</label>
-              <input
-                {...register('name', { required: true })}
-                className="form-control"
-              />
+      {/* Dialog xác nhận xóa */}
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+        <DialogTitle>Xác nhận xóa</DialogTitle>
+        <DialogContent>
+          <p>Bạn có chắc chắn muốn xóa thể loại này không?</p>
+          {deleteCategory && (
+            <div className="mt-2 text-sm text-gray-600">
+              <p><strong>Tên:</strong> {deleteCategory.name}</p>
             </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Huỷ
-            </Button>
-            <Button variant="primary" type="submit">
-              {editingId ? 'Cập nhật' : 'Tạo mới'}
-            </Button>
-          </Modal.Footer>
-        </form>
-      </Modal>
-      {/* Modal tạo nhiều */}
-      <Modal
-        show={showBulkModal}
-        centered
-        onHide={() => setShowBulkModal(false)}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Tạo nhiều thể loại</Modal.Title>
-        </Modal.Header>
-        <form onSubmit={bulkForm.handleSubmit(onSubmitBulk)}>
-          <Modal.Body>
-            {fields.map((field, index) => (
-              <div key={field.id} className="mb-2 d-flex align-items-center">
-                <input
-                  {...bulkForm.register(`categories.${index}.name`, {
-                    required: true,
-                  })}
-                  className="form-control me-2"
-                  placeholder={`Tên thể loại #${index + 1}`}
-                />
-                {fields.length > 1 && (
-                  <Button variant="danger" onClick={() => remove(index)}>
-                    X
-                  </Button>
-                )}
-              </div>
-            ))}
-            <Button
-              variant="secondary"
-              className="mt-2"
-              onClick={() => append({ name: '' })}
-            >
-              + Thêm dòng
-            </Button>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowBulkModal(false)}>
-              Huỷ
-            </Button>
-            <Button variant="primary" type="submit">
-              Tạo mới
-            </Button>
-          </Modal.Footer>
-        </form>
-      </Modal>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)}>Hủy</Button>
+          <Button color="error" onClick={confirmDelete}>
+            Xóa
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* Modal xác nhận xoá */}
-      <Modal
-        show={showDeleteModal}
-        centered
-        onHide={() => setShowDeleteModal(false)}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Xác nhận xoá</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Bạn có chắc chắn muốn xoá thể loại{' '}
-          <strong>{deletingCategory?.name}</strong> không?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Huỷ
-          </Button>
-          <Button variant="danger" onClick={handleDeleteConfirm}>
-            Xoá
-          </Button>
-        </Modal.Footer>
-      </Modal>
+
+      <HeaderPage
+        title="Quản lý thể loại"
+        onKeywordChange={setKeyword}
+        onAddClick={onClickAdd}
+      />
+
+      {categoryData.length > 0 ? (
+        <Box sx={{ height: 400, width: '100%' }}>
+          <DataGrid
+            rows={categoryData}
+            columns={columns}
+            getRowId={(row) => row._id ?? ''}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 5 } },
+            }}
+            pageSizeOptions={[5]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            onRowSelectionModelChange={(ids) => {
+                if (Array.isArray(ids)) {
+                  setCategoryIdSelection(ids as string[]);
+                } else {
+                  setCategoryIdSelection([]);
+                }
+              }}
+          />
+        </Box>
+      ) : (
+        <div className="w-full h-[480px] flex items-center justify-center overflow-hidden">
+          <img
+            src="https://img.freepik.com/premium-vector/geen-data-gevonden_585024-42.jpg"
+            alt="Không có dữ liệu"
+          />
+        </div>
+      )}
     </div>
   );
 };
