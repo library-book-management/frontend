@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { IAuthor } from '../types/authors.type';
 import { authorsApi, type AuthorParams } from '../apis/author.api';
-import { toast } from 'react-toastify';
 
 interface AuthorState {
   author: IAuthor | null;
