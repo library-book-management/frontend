@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem('accessToken', response.data.accessToken);
       localStorage.setItem('refreshToken', response.data.refreshToken);
     } catch (error: any) {
-      throw error.response?.data || error;
+      throw error.response?.data?.message || error;
     }
   },
   logout: () => {

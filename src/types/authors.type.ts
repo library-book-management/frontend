@@ -1,10 +1,14 @@
 export interface IAuthor {
-    _id: string;
+    _id?: string;
     name: string;
     phone: string;
     email: string;
 }
 
+export const AUTHOR_MODAL_TYPE = {
+  CREATE: 'create',
+  UPDATE: 'update',
+} as const;
 
-export type CreateAuthorDto = Omit<IAuthor, "_id">;
-export type UpdateAuthorDto = Partial<Omit<IAuthor, "_id">>;
+export type AuthorModalType =
+  (typeof AUTHOR_MODAL_TYPE)[keyof typeof AUTHOR_MODAL_TYPE];

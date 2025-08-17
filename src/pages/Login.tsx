@@ -34,8 +34,8 @@ const Login = () => {
       setTimeout(() => {
         window.location.href = '/';
       }, 1000);
-    } catch (error) {
-      toast.error(message);
+    } catch (error ) {
+      toast.error(error as string ?? "Sai tài khoản hoặc mật khẩu. Vui lòng đăng nhập lại!");
     }
   };
 
@@ -62,6 +62,7 @@ const Login = () => {
               id=""
               onChange={(e) => hanleInputChange(e)}
               className="w-full p-2 focus:outline-none"
+              placeholder='Nhập email'
             />
             <button className="p-3 border border-l border-t-0 border-r-0 border-b-0">
               <MdEmail size={20} />
@@ -77,6 +78,7 @@ const Login = () => {
               id=""
               onChange={(e) => hanleInputChange(e)}
               className="w-full p-2 focus:outline-none"
+              placeholder='Nhập mật khẩu'
             />
             <button
               onClick={() => handleShowPassword()}

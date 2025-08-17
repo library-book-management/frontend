@@ -1,204 +1,237 @@
-import type { CreateAuthorDto, IAuthor } from "../types/authors.type";
-import { useEffect, useState } from "react";
-import { Modal, Button, Table, Pagination } from "react-bootstrap";
-import { useForm } from "react-hook-form";
-import { toast } from "react-toastify";
-import { authorsApi } from "../apis/author.api";
+import HeaderPage from '../components/HeaderPage';
+import AuthorUpsertModal from '../components/AuthorUpsertModal';
+import Box from '@mui/material/Box';
+import { useEffect, useState } from 'react';
+import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import {
+  IconButton,
+  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+} from '@mui/material';
+import { BiEdit } from 'react-icons/bi';
+import { MdDelete } from 'react-icons/md';
+import {
+  AUTHOR_MODAL_TYPE,
+  type AuthorModalType,
+  type IAuthor,
+} from '../types/authors.type';
+import { useAuthorStore } from '../stores/author.store';
+import type { AuthorParams } from '../apis/author.api';
 
 const Authors = () => {
-  const [authorList, setAuthorList] = useState<IAuthor[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const { getAuthorsByConditions, authors, deleteAuthorById } = useAuthorStore();
+
+  const [authorData, setAuthorData] = useState<IAuthor[]>([]);
+  const [authorIdSelection, setAuthorIdSelection] = useState<string[]>([]);
+  const [keyword, setKeyword] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingAuthor, setDeletingAuthor] = useState<IAuthor | null>(null);
+  const [modalType, setModalType] = useState<AuthorModalType>();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteAuthor, setDeleteAuthor] = useState<IAuthor | null>(null);
 
-  const { register, handleSubmit, reset } = useForm<Partial<IAuthor>>();
+  // Hàm load authors có params
+  const loadAuthors = async (search = '') => {
+    let paramsApi: AuthorParams = {
+      page: 1,
+      limit: 10,
+    };
 
-  const limit = 10;
-  const totalPages = Math.ceil(total / limit);
-
-  const loadAuthors = async (pageNum = page) => {
-    try {
-      const res = await authorsApi.getAll({page: pageNum, limit});
-      setAuthorList(res?.data?.authors || []);
-      setTotal(res?.data?.totalResults || 0);
-    } catch {
-      toast.error("Lỗi không thể lấy danh sách tác giả");
-    }
-  };
-
-  useEffect(() => {
-    loadAuthors(page);
-  }, [page]);
-
-  const openCreate = () => {
-    reset({ name: "", phone: "", email: "" });
-    setEditingId(null);
-    setShowModal(true);
-  };
-
-  const openEdit = (author: IAuthor) => {
-    reset({
-      name: author.name,
-      phone: author.phone,
-      email: author.email,
-    });
-    setEditingId(author._id);
-    setShowModal(true);
-  };
-
-  const openDelete = (author: IAuthor) => {
-    setDeletingAuthor(author);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deletingAuthor) return;
-    try {
-      await authorsApi.delete(deletingAuthor._id);
-      toast.success("Xoá thành công");
-      loadAuthors(page);
-    } catch {
-      toast.error("Không thể xoá");
-    } finally {
-      setShowDeleteModal(false);
-      setDeletingAuthor(null);
-    }
-  };
-
-  const onSubmit = async (data: Partial<IAuthor>) => {
-    try {
-      if (!data) return;
-      if (editingId) {
-        await authorsApi.update(editingId, data);
-        toast.success("Cập nhật thành công");
+    if (search.trim() !== '') {
+      if (/^\d+$/.test(search)) {
+        // toàn số → search theo phone
+        paramsApi.searchBy = 'phone';
+        paramsApi.value = search;
+      } else if (/\S+@\S+\.\S+/.test(search)) {
+        // có dạng email
+        paramsApi.searchBy = 'email';
+        paramsApi.value = search;
       } else {
-        await authorsApi.create(data as CreateAuthorDto);
-        toast.success("Tạo mới thành công");
+        // mặc định là tên
+        paramsApi.searchBy = 'name';
+        paramsApi.value = search;
       }
-      setShowModal(false);
-      loadAuthors(page);
-    } catch {
-      toast.error("Lỗi khi lưu tác giả");
+    }
+
+    await getAuthorsByConditions(paramsApi);
+  };
+
+
+  const onClickAdd = () => {
+    setShowModal(true);
+    setModalType(AUTHOR_MODAL_TYPE.CREATE);
+    setAuthorIdSelection([]);
+  };
+
+  const handleDelete = (author: IAuthor) => {
+    setDeleteAuthor(author);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteAuthor) {
+      await deleteAuthorById(deleteAuthor?._id ?? "");
+      await loadAuthors(keyword);
+      setDeleteAuthor(null);
+      setShowDeleteDialog(false);
     }
   };
+
+  // Lần đầu load
+  useEffect(() => {
+    loadAuthors();
+  }, []);
+
+  // Khi authors trong store thay đổi thì set lại state local
+  useEffect(() => {
+    if (authors && authors.length > 0) {
+      setAuthorData(authors);
+    }
+  }, [authors]);
+
+  // Khi keyword thay đổi thì gọi API mới (debounce để giảm call)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadAuthors(keyword);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [keyword]);
+
+  const columns: GridColDef<IAuthor>[] = [
+    {
+      field: 'name',
+      headerName: 'Họ tên',
+      flex: 1,
+      align: 'left',
+      editable: true,
+    },
+    {
+      field: 'phone',
+      headerName: 'Số điện thoại',
+      flex: 1,
+      align: 'left',
+      editable: true,
+    },
+    {
+      field: 'email',
+      headerName: 'Email',
+      flex: 1,
+      align: 'left',
+      editable: true,
+    },
+    {
+      field: 'actions',
+      headerName: 'Hành động',
+      sortable: false,
+      flex: 1,
+      align: 'left',
+      renderCell: (params) => (
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent="left"
+          alignItems="center"
+          className="h-full"
+        >
+          <IconButton
+            color="primary"
+            size="small"
+            onClick={() => {
+              setShowModal(true);
+              setAuthorIdSelection([params.row._id ?? '']);
+              setModalType(AUTHOR_MODAL_TYPE.UPDATE);
+            }}
+          >
+            <BiEdit fontSize="inherit" />
+          </IconButton>
+          <IconButton
+            color="error"
+            size="small"
+            className="flex items-center justify-center"
+            onClick={() => handleDelete(params.row)}
+          >
+            <MdDelete fontSize="inherit" />
+          </IconButton>
+        </Stack>
+      ),
+    },
+  ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center">
-        <h1 className="mb-3 text-2xl font-bold">Danh sách tác giả</h1>
-        <Button onClick={openCreate} variant="primary" className="mb-3">
-          Thêm tác giả
-        </Button>
-      </div>
+    <div className="relative">
+      {showModal && (
+        <div className="absolute w-full h-[92vh] flex items-center justify-center">
+          <div
+            className="w-full h-screen fixed top-0 left-0 bg-black opacity-50 flex justify-center items-center z-10"
+            onClick={() => setShowModal(false)}
+          ></div>
+          <AuthorUpsertModal
+            authorId={authorIdSelection}
+            type={modalType ?? ''}
+            onCloseModal={() => setShowModal(false)}
+            loadAuthors={loadAuthors}
+          />
+        </div>
+      )}
 
-      <Table bordered hover>
-        <thead>
-          <tr>
-            <th>Tên</th>
-            <th>SĐT</th>
-            <th>Email</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          {authorList.map((author) => (
-            <tr key={author._id}>
-              <td>{author.name}</td>
-              <td>{author.phone}</td>
-              <td>{author.email}</td>
-              <td>
-                <Button
-                  variant="warning"
-                  size="sm"
-                  onClick={() => openEdit(author)}
-                  className="me-2"
-                >
-                  Sửa
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => openDelete(author)}
-                >
-                  Xoá
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-
-      {/* Pagination từ react-bootstrap */}
-      <Pagination className="justify-content-center mt-3">
-        <Pagination.First onClick={() => setPage(1)} disabled={page === 1} />
-        <Pagination.Prev onClick={() => setPage((p) => p - 1)} disabled={page === 1} />
-
-        {Array.from({ length: totalPages }, (_, i) => (
-          <Pagination.Item
-            key={i + 1}
-            active={i + 1 === page}
-            onClick={() => setPage(i + 1)}
-          >
-            {i + 1}
-          </Pagination.Item>
-        ))}
-
-        <Pagination.Next onClick={() => setPage((p) => p + 1)} disabled={page === totalPages} />
-        <Pagination.Last onClick={() => setPage(totalPages)} disabled={page === totalPages} />
-      </Pagination>
-
-      {/* Modal tạo/sửa */}
-      <Modal show={showModal} centered onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{editingId ? "Sửa tác giả" : "Tạo mới tác giả"}</Modal.Title>
-        </Modal.Header>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Modal.Body>
-            <div className="mb-3">
-              <label className="form-label">Tên</label>
-              <input {...register("name", { required: true })} className="form-control" />
+      {/* Dialog xác nhận xóa */}
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+        <DialogTitle>Xác nhận xóa</DialogTitle>
+        <DialogContent>
+          <p>Bạn có chắc chắn muốn xóa tác giả này không?</p>
+          {deleteAuthor && (
+            <div className="mt-2 text-sm text-gray-600">
+              <p><strong>Tên:</strong> {deleteAuthor.name}</p>
+              <p><strong>Email:</strong> {deleteAuthor.email}</p>
+              <p><strong>SĐT:</strong> {deleteAuthor.phone}</p>
             </div>
-            <div className="mb-3">
-              <label className="form-label">Số điện thoại</label>
-              <input {...register("phone", { required: true })} className="form-control" />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Email</label>
-              <input {...register("email", { required: true })} className="form-control" />
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Huỷ
-            </Button>
-            <Button variant="primary" type="submit">
-              {editingId ? "Cập nhật" : "Tạo mới"}
-            </Button>
-          </Modal.Footer>
-        </form>
-      </Modal>
-
-      {/* Modal xác nhận xoá */}
-      <Modal show={showDeleteModal} centered onHide={() => setShowDeleteModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Xác nhận xoá</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Bạn có chắc chắn muốn xoá tác giả{" "}
-          <strong>{deletingAuthor?.name}</strong> không?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Huỷ
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)}>Hủy</Button>
+          <Button color="error" onClick={confirmDelete}>
+            Xóa
           </Button>
-          <Button variant="danger" onClick={handleDeleteConfirm}>
-            Xoá
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        </DialogActions>
+      </Dialog>
+
+
+      <HeaderPage
+        title="Quản lý tác giả"
+        onKeywordChange={setKeyword}
+        onAddClick={onClickAdd}
+      />
+
+      {authorData.length > 0 ? (
+        <Box sx={{ height: 400, width: '100%' }}>
+          <DataGrid
+            rows={authorData}
+            columns={columns}
+            getRowId={(row) => row._id ?? ''}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 5 } },
+            }}
+            pageSizeOptions={[5]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            onRowSelectionModelChange={(ids) => {
+              const rowIds = ids as unknown as string[];
+              setAuthorIdSelection(rowIds.map((id) => id));
+            }}
+          />
+        </Box>
+      ) : (
+        <div className="w-full h-[480px] flex items-center justify-center overflow-hidden">
+          <img
+            src="https://img.freepik.com/premium-vector/geen-data-gevonden_585024-42.jpg"
+            alt="Không có dữ liệu"
+          />
+        </div>
+      )}
     </div>
   );
 };
