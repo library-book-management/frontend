@@ -1,7 +1,7 @@
 import type { CreateBookDto, IBook } from '../types/book.type';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Button, Table, Pagination } from 'react-bootstrap';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { BsPencilSquare, BsTrash } from 'react-icons/bs';
 import { booksApi } from '../apis/book.api';
@@ -18,14 +18,14 @@ const Books = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingBook, setDeletingBook] = useState<IBook | null>(null);
   const [authors, setAuthors] = useState<any[]>([]);
-  const [publishers, setPublishers] = useState<any[]>([]);
+  // const [publishers, setPublishers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
 
-  const { register, handleSubmit, reset, control } = useForm<Partial<IBook>>();
-  const { fields } = useFieldArray({
-    control,
-    name: 'category_id',
-  });
+  const { register, handleSubmit, reset } = useForm<Partial<IBook>>();
+  // const { fields } = useFieldArray({
+  //   control,
+  //   name: 'category_id',
+  // });
   const limit = 10;
   const totalPages = Math.ceil(total / limit);
 
@@ -250,11 +250,11 @@ const Books = () => {
                 className="form-control"
               >
                 <option value="">Chọn nhà xuất bản</option>
-                {publishers.map((pub) => (
+                {/* {publishers.map((pub) => (
                   <option key={pub._id} value={pub._id}>
                     {pub.name}
                   </option>
-                ))}
+                ))} */}
               </select>
             </div>
             <div className="mb-3">
