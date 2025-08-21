@@ -12,6 +12,10 @@ const apiContant = {
     init: '/books',
     id: (id: string) => `/books/${id}`,
   },
+  publishers: {
+    init: '/publishers',
+    id: (id: string) => `/publishers/${id}`,
+  },
 };
 
 export default apiContant;
