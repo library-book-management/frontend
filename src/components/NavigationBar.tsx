@@ -1,4 +1,4 @@
-import { MdSpaceDashboard } from 'react-icons/md';
+// import { MdSpaceDashboard } from 'react-icons/md';
 import { FaUserFriends } from 'react-icons/fa';
 import { FaBook } from 'react-icons/fa6';
 import { PiBooksFill } from 'react-icons/pi';
@@ -9,11 +9,11 @@ import { useAuthStore } from '../stores/auth.store';
 import { toast } from 'react-toastify';
 
 const navLinks = [
-  {
-    name: 'Dashboard',
-    path: '/',
-    icon: <MdSpaceDashboard size={24} />,
-  },
+  // {
+  //   name: 'Dashboard',
+  //   path: '/',
+  //   icon: <MdSpaceDashboard size={24} />,
+  // },
   {
     name: 'Users',
     path: '/users',
