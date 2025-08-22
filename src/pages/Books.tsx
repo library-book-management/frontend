@@ -1,13 +1,13 @@
 import type { CreateBookDto, IBook } from '../types/book.type';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Button, Table, Pagination } from 'react-bootstrap';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { BsPencilSquare, BsTrash } from 'react-icons/bs';
 import { booksApi } from '../apis/book.api';
 import { authorsApi } from '../apis/author.api';
-// import { publishersApi } from '../apis/publisher.api';
 import { categoriesApi } from '../apis/category.api';
+import { publishersApi } from '../apis/publisher.api';
 
 const Books = () => {
   const [bookList, setBookList] = useState<IBook[]>([]);
@@ -18,33 +18,46 @@ const Books = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingBook, setDeletingBook] = useState<IBook | null>(null);
   const [authors, setAuthors] = useState<any[]>([]);
-  // const [publishers, setPublishers] = useState<any[]>([]);
+  const [publishers, setPublishers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [keyword, setKeyword] = useState<string>('');
 
-  const { register, handleSubmit, reset } = useForm<Partial<IBook>>();
-  // const { fields } = useFieldArray({
-  //   control,
-  //   name: 'category_id',
-  // });
+  const { register, handleSubmit, reset, control } = useForm<Partial<IBook>>();
+  const { fields } = useFieldArray({
+    control,
+    name: 'category_id',
+  });
   const limit = 10;
   const totalPages = Math.ceil(total / limit);
 
   const loadBooks = useCallback(
-    async (pageNum = page) => {
+    async (pageNum = page, search = keyword) => {
       try {
-        const res = await booksApi.getAll({ page: pageNum, limit });
+        const res = await booksApi.getAll({
+          page: pageNum,
+          limit,
+        });
         setBookList(res?.data?.books || []);
         setTotal(res?.data?.totalResults || 0);
       } catch {
         toast.error('Lỗi không thể lấy danh sách sách');
       }
     },
-    [page, limit]
+    [page, limit, keyword]
   );
 
   useEffect(() => {
     loadBooks(page);
   }, [loadBooks, page]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadBooks(1, keyword);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [keyword]);
 
   // Lấy danh sách khi mở modal
   useEffect(() => {
@@ -52,9 +65,9 @@ const Books = () => {
       authorsApi
         .getAll({ page: 1, limit: 10 })
         .then((res) => setAuthors(res?.data || []));
-      // publishersApi
-      //   .getAll({ page: 1, limit: 10 })
-      //   .then((res) => setPublishers(res?.data || []));
+      publishersApi
+        .getAll({ page: 1, limit: 10 })
+        .then((res) => setPublishers(res?.data || []));
       categoriesApi
         .getAll({ page: 1, limit: 10 })
         .then((res) => setCategories(res?.data || []));
@@ -79,9 +92,15 @@ const Books = () => {
   const openEdit = (book: IBook) => {
     reset({
       title: book.title,
-      author_id: book.author_id,
-      category_id: book.category_id,
-      publisher_id: book.publisher_id,
+      author_id: Array.isArray(book.author_id)
+        ? book.author_id.map((a) => (typeof a === 'object' ? a._id : a))
+        : [],
+      category_id: Array.isArray(book.category_id)
+        ? book.category_id.map((c) => (typeof c === 'object' ? c._id : c))
+        : [],
+      publisher_id: Array.isArray(book.publisher_id)
+        ? book.publisher_id.map((c) => (typeof c === 'object' ? c._id : c))
+        : [],
       year_published: book.year_published,
       isbn: book.isbn,
       quantity: book.quantity,
@@ -113,11 +132,21 @@ const Books = () => {
   const onSubmit = async (data: Partial<IBook>) => {
     try {
       if (!data) return;
+      // Xử lý category_id là mảng
+      const categoryArr = Array.isArray(data.category_id)
+        ? data.category_id
+        : typeof data.category_id === 'string'
+          ? [data.category_id]
+          : [];
+      const submitData = {
+        ...data,
+        category_id: categoryArr,
+      };
       if (editingId) {
-        await booksApi.update(editingId, data);
+        await booksApi.update(editingId, submitData);
         toast.success('Cập nhật thành công');
       } else {
-        await booksApi.create(data as CreateBookDto);
+        await booksApi.create(submitData as CreateBookDto);
         toast.success('Tạo mới thành công');
       }
       setShowModal(false);
@@ -131,7 +160,7 @@ const Books = () => {
     <div>
       <div className="flex justify-between items-center">
         <h1 className="mb-3 text-2xl font-bold">Danh sách sách</h1>
-        <div>
+        <div className="flex gap-2 items-center">
           <Button onClick={openCreate} variant="primary" className="mb-3">
             Thêm sách
           </Button>
@@ -250,11 +279,11 @@ const Books = () => {
                 className="form-control"
               >
                 <option value="">Chọn nhà xuất bản</option>
-                {/* {publishers.map((pub) => (
+                {publishers.map((pub) => (
                   <option key={pub._id} value={pub._id}>
                     {pub.name}
                   </option>
-                ))} */}
+                ))}
               </select>
             </div>
             <div className="mb-3">
@@ -263,6 +292,7 @@ const Books = () => {
                 {...register('category_id', { required: true })}
                 className="form-control"
                 multiple
+                defaultValue={[]}
               >
                 {categories.map((cat) => (
                   <option key={cat._id} value={cat._id}>

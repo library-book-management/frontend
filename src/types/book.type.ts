@@ -1,12 +1,13 @@
 import type { IAuthor } from './authors.type';
 import type { ICategory } from './categories.type';
+import type { IPublishers } from './publishers.type';
 
 export interface IBook {
   _id: string;
   title: string;
   author_id: IAuthor[];
   category_id: ICategory[];
-  publisher_id: string[];
+  publisher_id: IPublishers[];
   year_published: number;
   isbn: string;
   quantity: number;
