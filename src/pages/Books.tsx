@@ -13,44 +13,101 @@ import {
 } from '../types/book.type';
 import { useBookStore } from '../stores/book.store';
 import BookUpsertModal from '../components/BookUpsertModal';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
 
 const Books = () => {
-  const { getBooks, deleteBookById, books } = useBookStore();
+  const { getBooks, deleteBookById, books, getBookById } = useBookStore();
   const [bookData, setBookData] = useState<IBook[]>([]);
   const [bookIdSelection, setBookIdSelection] = useState<string[]>([]);
   const [keyword, setKeyword] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<BookModalType>();
+  const [loading, setLoading] = useState(false);
+  const [selectedBookData, setSelectedBookData] = useState<IBook | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState<IBook | null>(null);
 
-  // Hàm load book có params
   const loadBooks = async (search = '') => {
-    await getBooks({ page: 1, limit: 10, keyword: search });
+    try {
+      setLoading(true);
+
+      await getBooks({ page: 1, limit: 10, search: search });
+    } catch (error) {
+      console.error('❌ Lỗi khi gọi API:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (bookId: string) => {
+    console.log('🗑️ Đang xóa book:', bookId);
+
+    // Xóa sách từ API
     await deleteBookById(bookId);
-    await loadBooks(keyword); // cập nhật lại danh sách book
+
+    // Cập nhật local state ngay lập tức để UI responsive
+    setBookData((prevBooks) => prevBooks.filter((book) => book._id !== bookId));
+
+    // Sau đó reload data từ server để đảm bảo sync
+    try {
+      await loadBooks(keyword);
+    } catch (error) {
+      console.error(
+        '⚠️ Error reloading data, but delete was successful:',
+        error
+      );
+      // Nếu reload fail, ít nhất UI đã được update
+    }
+  };
+
+  const onClickDelete = (book: IBook) => {
+    console.log('🗑️ Preparing to delete book:', book);
+    setBookToDelete(book);
+    setShowDeleteModal(true);
   };
 
   const onClickAdd = () => {
     setShowModal(true);
     setModalType(BOOK_MODAL_TYPE.CREATE);
     setBookIdSelection([]);
+    setSelectedBookData(null);
   };
 
-  // Lần đầu load
+  const onClickEdit = async (bookId: string) => {
+    try {
+      // Tìm book data từ danh sách hiện tại
+      const bookToEdit = bookData.find((book) => book._id === bookId);
+
+      if (bookToEdit) {
+        console.log('📖 Found book data:', bookToEdit);
+        setSelectedBookData(bookToEdit);
+        setBookIdSelection([bookId]);
+        setModalType(BOOK_MODAL_TYPE.UPDATE);
+        setShowModal(true);
+      } else {
+        const fetchedBook = await getBookById(bookId);
+        setSelectedBookData(fetchedBook as any);
+        setBookIdSelection([bookId]);
+        setModalType(BOOK_MODAL_TYPE.UPDATE);
+        setShowModal(true);
+      }
+    } catch (error) {
+      console.error('❌ Error loading book for edit:', error);
+    }
+  };
+
   useEffect(() => {
     loadBooks();
   }, []);
 
-  // Khi books trong store thay đổi thì set lại state local
   useEffect(() => {
-    if (books) {
+    if (books && Array.isArray(books)) {
       setBookData(books);
+    } else {
+      setBookData([]);
     }
   }, [books]);
 
-  // Khi keyword thay đổi thì gọi API mới (debounce để giảm call)
   useEffect(() => {
     const timer = setTimeout(() => {
       loadBooks(keyword);
@@ -68,39 +125,91 @@ const Books = () => {
       editable: true,
     },
     {
-      field: 'author',
+      field: 'author_id',
       headerName: 'Tác giả',
       flex: 1.5,
       align: 'left',
       editable: true,
-      renderCell: (params) => (
-        <div className="py-2">{params.value?.name || 'Chưa có tác giả'}</div>
-      ),
+      renderCell: (params) => {
+        const authors = params.value as IBook['author_id'];
+        if (!authors || !Array.isArray(authors) || authors.length === 0) {
+          return <div className="py-2">Chưa có tác giả</div>;
+        }
+
+        // Hiển thị tên tác giả đầu tiên, nếu có nhiều hơn thì thêm "..."
+        const displayText =
+          authors.length > 1
+            ? `${authors[0].name} (+${authors.length - 1})`
+            : authors[0].name;
+
+        return <div className="py-2">{displayText}</div>;
+      },
     },
     {
-      field: 'publisher',
+      field: 'publisher_id',
       headerName: 'Nhà xuất bản',
       flex: 1.5,
       align: 'left',
-      renderCell: (params) => (
-        <div className="py-2">{params.value?.name || 'Chưa có NXB'}</div>
-      ),
+      renderCell: (params) => {
+        const publishers = params.value as IBook['publisher_id'];
+        if (
+          !publishers ||
+          !Array.isArray(publishers) ||
+          publishers.length === 0
+        ) {
+          return <div className="py-2">Chưa có NXB</div>;
+        }
+
+        // Hiển thị tên NXB đầu tiên, nếu có nhiều hơn thì thêm "..."
+        const displayText =
+          publishers.length > 1
+            ? `${publishers[0].name} (+${publishers.length - 1})`
+            : publishers[0].name;
+
+        return <div className="py-2">{displayText}</div>;
+      },
     },
     {
-      field: 'category',
+      field: 'category_id',
       headerName: 'Thể loại',
       flex: 1.2,
       align: 'left',
-      renderCell: (params) => (
-        <div className="py-2">
-          <Chip
-            label={params.value?.name || 'Chưa phân loại'}
-            size="small"
-            variant="outlined"
-            color="primary"
-          />
-        </div>
-      ),
+      renderCell: (params) => {
+        const categories = params.value as IBook['category_id'];
+        if (
+          !categories ||
+          !Array.isArray(categories) ||
+          categories.length === 0
+        ) {
+          return (
+            <div className="py-2">
+              <Chip
+                label="Chưa phân loại"
+                size="small"
+                variant="outlined"
+                color="default"
+              />
+            </div>
+          );
+        }
+
+        // Hiển thị category đầu tiên
+        const displayText =
+          categories.length > 1
+            ? `${categories[0].name} (+${categories.length - 1})`
+            : categories[0].name;
+
+        return (
+          <div className="py-2">
+            <Chip
+              label={displayText}
+              size="small"
+              variant="outlined"
+              color="primary"
+            />
+          </div>
+        );
+      },
     },
     {
       field: 'year_published',
@@ -162,11 +271,7 @@ const Books = () => {
           <IconButton
             color="primary"
             size="small"
-            onClick={() => {
-              setShowModal(true);
-              setBookIdSelection([params.row._id ?? '']);
-              setModalType(BOOK_MODAL_TYPE.UPDATE);
-            }}
+            onClick={() => onClickEdit(params.row._id ?? '')}
           >
             <BiEdit fontSize="inherit" />
           </IconButton>
@@ -174,7 +279,7 @@ const Books = () => {
             color="error"
             size="small"
             className="flex items-center justify-center"
-            onClick={() => handleDelete(params.row._id ?? '')}
+            onClick={() => onClickDelete(params.row)}
           >
             <MdDelete fontSize="inherit" />
           </IconButton>
@@ -185,6 +290,7 @@ const Books = () => {
 
   return (
     <div className="relative">
+      {/* Book Upsert Modal */}
       {showModal && (
         <div className="absolute w-full h-[92vh] flex items-center justify-center">
           <div
@@ -194,18 +300,55 @@ const Books = () => {
           <BookUpsertModal
             bookId={bookIdSelection}
             type={modalType?.toUpperCase() as 'CREATE' | 'UPDATE'}
-            onCloseModal={() => setShowModal(false)}
+            onCloseModal={() => {
+              setShowModal(false);
+              setSelectedBookData(null);
+            }}
             loadBooks={loadBooks}
-            show={true} // sửa lại từ false thành true
+            show={true}
+            initialData={selectedBookData || undefined}
           />
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setBookToDelete(null);
+          // Optional: reload data khi đóng modal để đảm bảo data fresh
+          // forceReloadBooks();
+        }}
+        onConfirm={async () => {
+          if (bookToDelete) {
+            try {
+              await handleDelete(bookToDelete._id);
+              // Reset states sau khi delete thành công
+              setShowDeleteModal(false);
+              setBookToDelete(null);
+            } catch (error) {
+              console.error('❌ Error deleting book:', error);
+              // Có thể hiển thị toast error ở đây
+              throw error; // Re-throw để modal biết có lỗi
+            }
+          }
+        }}
+        bookData={bookToDelete}
+        title="Xác nhận xóa sách"
+      />
       <HeaderPage
         title="Quản lý sách"
         onKeywordChange={setKeyword}
         onAddClick={onClickAdd}
       />
-      {bookData && bookData.length > 0 ? (
+      {loading ? (
+        <div className="w-full h-[480px] flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p>Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      ) : bookData && bookData.length > 0 ? (
         <Box sx={{ height: 500, width: '100%' }}>
           <DataGrid
             rows={bookData}
@@ -226,11 +369,14 @@ const Books = () => {
         </Box>
       ) : (
         <div className="w-full h-[480px] flex items-center justify-center overflow-hidden">
-          <img
-            src="https://img.freepik.com/premium-vector/geen-data-gevonden_585024-42.jpg"
-            alt="No data found"
-            className=""
-          />
+          <div className="text-center">
+            <img
+              src="https://img.freepik.com/premium-vector/geen-data-gevonden_585024-42.jpg"
+              alt="No data found"
+              className="mx-auto mb-4 w-48 h-48 object-contain"
+            />
+            <p className="text-gray-500 text-lg">Không có dữ liệu</p>
+          </div>
         </div>
       )}
     </div>
