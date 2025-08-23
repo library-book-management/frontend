@@ -7,6 +7,7 @@ export const booksApi = {
     axiosClient.get(apiContant.book.init, {
       params: { page, limit },
     }),
+  getById: (id: string) => axiosClient.get(apiContant.book.id(id)),
   update: (id: string, value: UpdateBookDto) =>
     axiosClient.put(apiContant.book.id(id), value),
   delete: (id: string) => axiosClient.delete(apiContant.book.id(id)),

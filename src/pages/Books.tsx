@@ -1,354 +1,238 @@
-import type { CreateBookDto, IBook } from '../types/book.type';
-import { useCallback, useEffect, useState } from 'react';
-import { Modal, Button, Table, Pagination } from 'react-bootstrap';
-import { useFieldArray, useForm } from 'react-hook-form';
-import { toast } from 'react-toastify';
-import { BsPencilSquare, BsTrash } from 'react-icons/bs';
-import { booksApi } from '../apis/book.api';
-import { authorsApi } from '../apis/author.api';
-import { categoriesApi } from '../apis/category.api';
-import { publishersApi } from '../apis/publisher.api';
+import { useEffect, useState } from 'react';
+import HeaderPage from '../components/HeaderPage';
+import Box from '@mui/material/Box';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef } from '@mui/x-data-grid';
+import { IconButton, Stack, Chip } from '@mui/material';
+import { BiEdit } from 'react-icons/bi';
+import { MdDelete } from 'react-icons/md';
+import {
+  BOOK_MODAL_TYPE,
+  type BookModalType,
+  type IBook,
+} from '../types/book.type';
+import { useBookStore } from '../stores/book.store';
+import BookUpsertModal from '../components/BookUpsertModal';
 
 const Books = () => {
-  const [bookList, setBookList] = useState<IBook[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [showModal, setShowModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingBook, setDeletingBook] = useState<IBook | null>(null);
-  const [authors, setAuthors] = useState<any[]>([]);
-  const [publishers, setPublishers] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const { getBooks, deleteBookById, books } = useBookStore();
+  const [bookData, setBookData] = useState<IBook[]>([]);
+  const [bookIdSelection, setBookIdSelection] = useState<string[]>([]);
   const [keyword, setKeyword] = useState<string>('');
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState<BookModalType>();
 
-  const { register, handleSubmit, reset, control } = useForm<Partial<IBook>>();
-  const { fields } = useFieldArray({
-    control,
-    name: 'category_id',
-  });
-  const limit = 10;
-  const totalPages = Math.ceil(total / limit);
+  // Hàm load book có params
+  const loadBooks = async (search = '') => {
+    await getBooks({ page: 1, limit: 10, keyword: search });
+  };
 
-  const loadBooks = useCallback(
-    async (pageNum = page, search = keyword) => {
-      try {
-        const res = await booksApi.getAll({
-          page: pageNum,
-          limit,
-        });
-        setBookList(res?.data?.books || []);
-        setTotal(res?.data?.totalResults || 0);
-      } catch {
-        toast.error('Lỗi không thể lấy danh sách sách');
-      }
-    },
-    [page, limit, keyword]
-  );
+  const handleDelete = async (bookId: string) => {
+    await deleteBookById(bookId);
+    await loadBooks(keyword); // cập nhật lại danh sách book
+  };
 
+  const onClickAdd = () => {
+    setShowModal(true);
+    setModalType(BOOK_MODAL_TYPE.CREATE);
+    setBookIdSelection([]);
+  };
+
+  // Lần đầu load
   useEffect(() => {
-    loadBooks(page);
-  }, [loadBooks, page]);
+    loadBooks();
+  }, []);
 
-  // Debounce search
+  // Khi books trong store thay đổi thì set lại state local
+  useEffect(() => {
+    if (books) {
+      setBookData(books);
+    }
+  }, [books]);
+
+  // Khi keyword thay đổi thì gọi API mới (debounce để giảm call)
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadBooks(1, keyword);
-      setPage(1);
-    }, 300);
+      loadBooks(keyword);
+    }, 300); // 300ms debounce
+
     return () => clearTimeout(timer);
   }, [keyword]);
 
-  // Lấy danh sách khi mở modal
-  useEffect(() => {
-    if (showModal) {
-      authorsApi
-        .getAll({ page: 1, limit: 10 })
-        .then((res) => setAuthors(res?.data || []));
-      publishersApi
-        .getAll({ page: 1, limit: 10 })
-        .then((res) => setPublishers(res?.data || []));
-      categoriesApi
-        .getAll({ page: 1, limit: 10 })
-        .then((res) => setCategories(res?.data || []));
-    }
-  }, [showModal]);
-
-  const openCreate = () => {
-    reset({
-      title: '',
-      author_id: [],
-      category_id: [],
-      publisher_id: [],
-      year_published: 0,
-      isbn: '',
-      quantity: 0,
-      price: 0,
-    });
-    setEditingId(null);
-    setShowModal(true);
-  };
-
-  const openEdit = (book: IBook) => {
-    reset({
-      title: book.title,
-      author_id: Array.isArray(book.author_id)
-        ? book.author_id.map((a) => (typeof a === 'object' ? a._id : a))
-        : [],
-      category_id: Array.isArray(book.category_id)
-        ? book.category_id.map((c) => (typeof c === 'object' ? c._id : c))
-        : [],
-      publisher_id: Array.isArray(book.publisher_id)
-        ? book.publisher_id.map((c) => (typeof c === 'object' ? c._id : c))
-        : [],
-      year_published: book.year_published,
-      isbn: book.isbn,
-      quantity: book.quantity,
-      price: book.price,
-    });
-    setEditingId(book._id);
-    setShowModal(true);
-  };
-
-  const openDelete = (book: IBook) => {
-    setDeletingBook(book);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deletingBook) return;
-    try {
-      await booksApi.delete(deletingBook._id);
-      toast.success('Xoá thành công');
-      loadBooks(page);
-    } catch {
-      toast.error('Không thể xoá');
-    } finally {
-      setShowDeleteModal(false);
-      setDeletingBook(null);
-    }
-  };
-
-  const onSubmit = async (data: Partial<IBook>) => {
-    try {
-      if (!data) return;
-      // Xử lý category_id là mảng
-      const categoryArr = Array.isArray(data.category_id)
-        ? data.category_id
-        : typeof data.category_id === 'string'
-          ? [data.category_id]
-          : [];
-      const submitData = {
-        ...data,
-        category_id: categoryArr,
-      };
-      if (editingId) {
-        await booksApi.update(editingId, submitData);
-        toast.success('Cập nhật thành công');
-      } else {
-        await booksApi.create(submitData as CreateBookDto);
-        toast.success('Tạo mới thành công');
-      }
-      setShowModal(false);
-      loadBooks(page);
-    } catch {
-      toast.error('Lỗi khi lưu sách');
-    }
-  };
+  const columns: GridColDef<IBook>[] = [
+    {
+      field: 'title',
+      headerName: 'Tiêu đề',
+      flex: 2,
+      align: 'left',
+      editable: true,
+    },
+    {
+      field: 'author',
+      headerName: 'Tác giả',
+      flex: 1.5,
+      align: 'left',
+      editable: true,
+      renderCell: (params) => (
+        <div className="py-2">{params.value?.name || 'Chưa có tác giả'}</div>
+      ),
+    },
+    {
+      field: 'publisher',
+      headerName: 'Nhà xuất bản',
+      flex: 1.5,
+      align: 'left',
+      renderCell: (params) => (
+        <div className="py-2">{params.value?.name || 'Chưa có NXB'}</div>
+      ),
+    },
+    {
+      field: 'category',
+      headerName: 'Thể loại',
+      flex: 1.2,
+      align: 'left',
+      renderCell: (params) => (
+        <div className="py-2">
+          <Chip
+            label={params.value?.name || 'Chưa phân loại'}
+            size="small"
+            variant="outlined"
+            color="primary"
+          />
+        </div>
+      ),
+    },
+    {
+      field: 'year_published',
+      headerName: 'Năm XB',
+      flex: 0.8,
+      align: 'center',
+      editable: true,
+    },
+    {
+      field: 'isbn',
+      headerName: 'ISBN',
+      flex: 1.2,
+      align: 'left',
+      editable: true,
+    },
+    {
+      field: 'quantity',
+      headerName: 'Số lượng',
+      flex: 0.8,
+      align: 'center',
+      editable: true,
+      renderCell: (params) => (
+        <div className="py-2">
+          <Chip
+            label={params.value || 0}
+            size="small"
+            color={params.value > 0 ? 'success' : 'error'}
+            variant="filled"
+          />
+        </div>
+      ),
+    },
+    {
+      field: 'price',
+      headerName: 'Giá',
+      flex: 1,
+      align: 'right',
+      editable: true,
+      renderCell: (params) => (
+        <div className="py-2 font-medium text-green-600">
+          {params.value ? `${params.value.toLocaleString('vi-VN')} ₫` : '0 ₫'}
+        </div>
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Hành động',
+      sortable: false,
+      flex: 1,
+      align: 'center',
+      renderCell: (params) => (
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent="center"
+          alignItems="center"
+          className="h-full"
+        >
+          <IconButton
+            color="primary"
+            size="small"
+            onClick={() => {
+              setShowModal(true);
+              setBookIdSelection([params.row._id ?? '']);
+              setModalType(BOOK_MODAL_TYPE.UPDATE);
+            }}
+          >
+            <BiEdit fontSize="inherit" />
+          </IconButton>
+          <IconButton
+            color="error"
+            size="small"
+            className="flex items-center justify-center"
+            onClick={() => handleDelete(params.row._id ?? '')}
+          >
+            <MdDelete fontSize="inherit" />
+          </IconButton>
+        </Stack>
+      ),
+    },
+  ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center">
-        <h1 className="mb-3 text-2xl font-bold">Danh sách sách</h1>
-        <div className="flex gap-2 items-center">
-          <Button onClick={openCreate} variant="primary" className="mb-3">
-            Thêm sách
-          </Button>
+    <div className="relative">
+      {showModal && (
+        <div className="absolute w-full h-[92vh] flex items-center justify-center">
+          <div
+            className="w-full h-screen fixed top-0 left-0 bg-black opacity-50 flex justify-center items-center z-10"
+            onClick={() => setShowModal(false)}
+          ></div>
+          <BookUpsertModal
+            bookId={bookIdSelection}
+            type={modalType?.toUpperCase() as 'CREATE' | 'UPDATE'}
+            onCloseModal={() => setShowModal(false)}
+            loadBooks={loadBooks}
+            show={true} // sửa lại từ false thành true
+          />
         </div>
-      </div>
-      <p className="text-muted">
-        Tổng số sách: <strong>{total}</strong>
-      </p>
-
-      <Table bordered hover>
-        <thead>
-          <tr>
-            <th>STT</th>
-            <th>Tên sách</th>
-            <th>Tên tác giả</th>
-            <th>Nhà xuất bản</th>
-            <th>Thể loại</th>
-            <th>Giá</th>
-            <th>Số lượng sách</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bookList.map((book, index) => (
-            <tr key={book._id}>
-              <td>{(page - 1) * limit + index + 1}</td>
-              <td>{book.title}</td>
-              <td>{book.author_id[0]?.name}</td>
-              <td>{book.publisher_id}</td>
-              <td>{book.category_id[0]?.name}</td>
-              <td>{book.price}</td>
-              <td>{book.quantity}</td>
-
-              <td>
-                <Button
-                  variant="warning"
-                  size="sm"
-                  onClick={() => openEdit(book)}
-                  className="me-2"
-                  title="Sửa"
-                >
-                  <BsPencilSquare className="text-white" />
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => openDelete(book)}
-                  title="Xoá"
-                >
-                  <BsTrash />
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-
-      <Pagination className="justify-content-center mt-3">
-        <Pagination.First onClick={() => setPage(1)} disabled={page === 1} />
-        <Pagination.Prev
-          onClick={() => setPage((p) => p - 1)}
-          disabled={page === 1}
-        />
-
-        {Array.from({ length: totalPages }, (_, i) => (
-          <Pagination.Item
-            key={i + 1}
-            active={i + 1 === page}
-            onClick={() => setPage(i + 1)}
-          >
-            {i + 1}
-          </Pagination.Item>
-        ))}
-
-        <Pagination.Next
-          onClick={() => setPage((p) => p + 1)}
-          disabled={page === totalPages}
-        />
-        <Pagination.Last
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages}
-        />
-      </Pagination>
-
-      <Modal show={showModal} centered onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{editingId ? 'Sửa sách' : 'Tạo mới sách'}</Modal.Title>
-        </Modal.Header>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Modal.Body>
-            <div className="mb-3">
-              <label className="form-label">Tên sách</label>
-              <input
-                {...register('title', { required: true })}
-                className="form-control"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Tác giả (có thể chọn nhiều)</label>
-              <select
-                {...register('author_id', { required: true })}
-                className="form-control"
-                multiple
-              >
-                {authors.map((author) => (
-                  <option key={author._id} value={author._id}>
-                    {author.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Nhà xuất bản</label>
-              <select
-                {...register('publisher_id', { required: true })}
-                className="form-control"
-              >
-                <option value="">Chọn nhà xuất bản</option>
-                {publishers.map((pub) => (
-                  <option key={pub._id} value={pub._id}>
-                    {pub.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Thể loại (có thể chọn nhiều)</label>
-              <select
-                {...register('category_id', { required: true })}
-                className="form-control"
-                multiple
-                defaultValue={[]}
-              >
-                {categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Giá</label>
-              <input
-                {...register('price', { required: true })}
-                className="form-control"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Số lượng sách</label>
-              <input
-                {...register('quantity', { required: true })}
-                className="form-control"
-              />
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Huỷ
-            </Button>
-            <Button variant="primary" type="submit">
-              {editingId ? 'Cập nhật' : 'Tạo mới'}
-            </Button>
-          </Modal.Footer>
-        </form>
-      </Modal>
-
-      {/* Modal xác nhận xoá */}
-      <Modal
-        show={showDeleteModal}
-        centered
-        onHide={() => setShowDeleteModal(false)}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Xác nhận xoá</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Bạn có chắc chắn muốn xoá sách <strong>{deletingBook?.title}</strong>{' '}
-          không?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Huỷ
-          </Button>
-          <Button variant="danger" onClick={handleDeleteConfirm}>
-            Xoá
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      )}
+      <HeaderPage
+        title="Quản lý sách"
+        onKeywordChange={setKeyword}
+        onAddClick={onClickAdd}
+      />
+      {bookData && bookData.length > 0 ? (
+        <Box sx={{ height: 500, width: '100%' }}>
+          <DataGrid
+            rows={bookData}
+            columns={columns}
+            getRowId={(row) => row._id ?? ''}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 8 } },
+            }}
+            pageSizeOptions={[5, 8, 10]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            rowHeight={60}
+            onRowSelectionModelChange={(ids) => {
+              const rowIds = ids as unknown as string[];
+              setBookIdSelection(rowIds.map((id) => id));
+            }}
+          />
+        </Box>
+      ) : (
+        <div className="w-full h-[480px] flex items-center justify-center overflow-hidden">
+          <img
+            src="https://img.freepik.com/premium-vector/geen-data-gevonden_585024-42.jpg"
+            alt="No data found"
+            className=""
+          />
+        </div>
+      )}
     </div>
   );
 };

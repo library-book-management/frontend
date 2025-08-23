@@ -18,3 +18,21 @@ export interface BulkFormValues {
 }
 export type CreateBookDto = Omit<IBook, '_id'>;
 export type UpdateBookDto = Partial<Omit<IBook, '_id'>>;
+
+export const BOOK_MODAL_TYPE = {
+  CREATE: 'create',
+  UPDATE: 'update',
+} as const;
+
+export const OBJECT_TYPE = {
+  USER: 'user',
+  AUTHOR: 'author',
+  CATEGORY: 'category',
+  BOOK: 'book',
+  PUBLISHER: 'publisher',
+} as const;
+
+export type BookModalType =
+  (typeof BOOK_MODAL_TYPE)[keyof typeof BOOK_MODAL_TYPE];
+
+export type ObjectType = (typeof OBJECT_TYPE)[keyof typeof OBJECT_TYPE];
