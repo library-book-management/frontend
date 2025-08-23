@@ -23,7 +23,7 @@ const userApi = {
     axiosClient.put(`/users/${id}`, data),
 
   // Xóa user
-  delete: (id: string) => axiosClient.delete(`/users/${id}`),
+  deleteUserById: (id: string) => axiosClient.delete(`/users/${id}`),
 };
 
 export default userApi;

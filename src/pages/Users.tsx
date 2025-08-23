@@ -13,7 +13,7 @@ import { USER_MODAL_TYPE } from '../constant/userType';
 import type { UserModalType } from '../constant/userType';
 
 const Users = () => {
-  const { getUserByConditions, users } = useUserStore();
+  const { getUserByConditions, deleteUserById, users } = useUserStore();
   const [userData, setUserData] = useState<User[]>([]);
   const [userIdSelection, setUserIdSelection] = useState<string[]>([]);
   const [keyword, setKeyword] = useState<string>('');
@@ -25,9 +25,10 @@ const Users = () => {
     await getUserByConditions({ page: 1, limit: 10, keyword: search });
   };
 
-  // const handleSearch = () => {
-  //   loadUsers(keyword);
-  // };
+  const handleDelete = async (userId: string) => {
+    await deleteUserById(userId);
+    await loadUsers(keyword); // cập nhật lại danh sách user
+  };
 
   const onClickAdd = () => {
     setShowModal(true);
@@ -42,10 +43,9 @@ const Users = () => {
 
   // Khi users trong store thay đổi thì set lại state local
   useEffect(() => {
-    if (users && users.length > 0) {
+    if (users) {
       setUserData(users);
     }
-    console.log(users);
   }, [users]);
 
   // Khi keyword thay đổi thì gọi API mới (debounce để giảm call)
@@ -117,6 +117,7 @@ const Users = () => {
             size="small"
             // onClick={() => handleDelete(params.row._id)}
             className="flex items-center justify-center"
+            onClick={() => handleDelete(params.row._id ?? '')}
           >
             <MdDelete fontSize="inherit" />
           </IconButton>
@@ -146,7 +147,7 @@ const Users = () => {
         onKeywordChange={setKeyword}
         onAddClick={onClickAdd}
       />
-      {userData.length > 0 ? (
+      {userData && userData.length > 0 ? (
         <Box sx={{ height: 400, width: '100%' }}>
           <DataGrid
             rows={userData}

@@ -1,11 +1,11 @@
-import { MdSpaceDashboard } from 'react-icons/md';
+// import { MdSpaceDashboard } from 'react-icons/md';
 import { FaUserFriends } from 'react-icons/fa';
 import { FaBook } from 'react-icons/fa6';
 import { PiBooksFill } from 'react-icons/pi';
 import { FaRegListAlt } from 'react-icons/fa';
 import { PiOfficeChairFill } from 'react-icons/pi';
 
-import Dashboard from '../pages/Dashboard';
+// import Dashboard from '../pages/Dashboard';
 import Users from '../pages/Users';
 import Publishers from '../pages/Publishers';
 import Authors from '../pages/Authors';
@@ -14,16 +14,16 @@ import Categories from '../pages/Categories';
 import Login from '../pages/Login';
 
 const routes = [
-  {
-    component: <Dashboard />,
-    path: '/',
-    icons: <MdSpaceDashboard size={24} />,
-    name: 'Dashboard',
-    private: true,
-  },
+  // {
+  //   component: <Dashboard />,
+  //   path: '/',
+  //   icons: <MdSpaceDashboard size={24} />,
+  //   name: 'Dashboard',
+  //   private: true,
+  // },
   {
     component: <Users />,
-    path: '/users',
+    path: '/',
     icons: <FaUserFriends size={24} />,
     name: 'Users',
     private: true,

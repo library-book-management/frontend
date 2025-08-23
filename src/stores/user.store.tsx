@@ -13,6 +13,7 @@ interface userState {
   getUserById: (userId: string) => Promise<void>;
   updateUserById: (userId: string, data: User) => Promise<void>;
   createUser: (data: User) => Promise<void>;
+  deleteUserById: (userId: string) => Promise<void>;
 }
 
 export const useUserStore = create<userState>((set) => ({
@@ -55,9 +56,22 @@ export const useUserStore = create<userState>((set) => ({
   createUser: async (data: User) => {
     try {
       const response = await userApi.createUser(data);
-      console.log(response);
 
       set({ user: response.data.user, message: response.data.message });
+    } catch (error: any) {
+      throw error.response?.data || error;
+    }
+  },
+
+  deleteUserById: async (userId: string) => {
+    try {
+      const response = await userApi.deleteUserById(userId);
+      console.log(response.data.users);
+
+      set({
+        users: response.data.users,
+        message: response.data.message,
+      });
     } catch (error: any) {
       throw error.response?.data || error;
     }
