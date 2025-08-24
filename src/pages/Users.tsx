@@ -11,23 +11,25 @@ import { MdDelete } from 'react-icons/md';
 import UserUpsertModal from '../components/UserUpsertModal';
 import { USER_MODAL_TYPE } from '../constant/userType';
 import type { UserModalType } from '../constant/userType';
+import DeleteConfirmModal from '../components/DeleteNotice';
 
 const Users = () => {
-  const { getUserByConditions, deleteUserById, users } = useUserStore();
+  const { getUserByConditions, users } = useUserStore();
   const [userData, setUserData] = useState<User[]>([]);
   const [userIdSelection, setUserIdSelection] = useState<string[]>([]);
   const [keyword, setKeyword] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<UserModalType>();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // const [selectionUserId, setSelectionUserId] = useState<string[]>([]);
+
+  const onClickModal = () => {
+    setShowDeleteModal(!showDeleteModal);
+  };
 
   // Hàm load user có params
   const loadUsers = async (search = '') => {
     await getUserByConditions({ page: 1, limit: 10, keyword: search });
-  };
-
-  const handleDelete = async (userId: string) => {
-    await deleteUserById(userId);
-    await loadUsers(keyword); // cập nhật lại danh sách user
   };
 
   const onClickAdd = () => {
@@ -117,7 +119,7 @@ const Users = () => {
             size="small"
             // onClick={() => handleDelete(params.row._id)}
             className="flex items-center justify-center"
-            onClick={() => handleDelete(params.row._id ?? '')}
+            onClick={onClickModal}
           >
             <MdDelete fontSize="inherit" />
           </IconButton>
@@ -128,6 +130,12 @@ const Users = () => {
 
   return (
     <div className="relative">
+      <DeleteConfirmModal
+        userId={userIdSelection[0]}
+        show={showDeleteModal}
+        onClickModal={onClickModal}
+        loadUsers={loadUsers}
+      />
       {showModal && (
         <div className="absolute w-full h-[92vh] flex items-center justify-center">
           <div
@@ -159,9 +167,9 @@ const Users = () => {
             pageSizeOptions={[5]}
             checkboxSelection
             disableRowSelectionOnClick
-            onRowSelectionModelChange={(ids) => {
-              const rowIds = ids as unknown as string[];
-              setUserIdSelection(rowIds.map((id) => id));
+            onRowSelectionModelChange={(newSelection) => {
+              const rowIds = Array.from(newSelection.ids).map(String);
+              setUserIdSelection(rowIds);
             }}
           />
         </Box>

@@ -15,27 +15,27 @@ const navLinks = [
   //   icon: <MdSpaceDashboard size={24} />,
   // },
   {
-    name: 'Users',
-    path: '/users',
+    name: 'Người dùng',
+    path: '/',
     icon: <FaUserFriends size={24} />,
   },
   {
-    name: 'Authors',
+    name: 'Tác giả',
     path: '/authors',
     icon: <FaBook size={24} />,
   },
   {
-    name: 'Books',
+    name: 'Sách',
     path: '/books',
     icon: <PiBooksFill size={24} />,
   },
   {
-    name: 'Categories',
+    name: 'Thể loại',
     path: '/categories',
     icon: <FaRegListAlt size={24} />,
   },
   {
-    name: 'Publishers',
+    name: 'Nhà xuất bản',
     path: '/publishers',
     icon: <PiOfficeChairFill size={24} />,
   },
@@ -80,7 +80,7 @@ const NavigationBar = ({ className }: { className: string }) => {
         className="absolute bottom-0 bg-black text-white w-full py-2"
         onClick={handleLogout}
       >
-        Logout
+        Đăng xuất
       </button>
     </div>
   );
